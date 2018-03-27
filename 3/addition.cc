@@ -144,9 +144,8 @@ int main(int argc, char* argv[]) {
         std::string line;
 
         std::vector<lint> numbers;
-        while (std::getline(f, line)) {
+        while (std::getline(f, line))
             numbers.push_back(to_lint(line));
-        }
 
         f.close();
 
