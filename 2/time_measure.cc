@@ -128,6 +128,8 @@ int G_Reduce(const void *sendbuf, void *recvbuf, int count,
     assert(op       == MPI_SUM);
     assert(datatype == MPI_INT);
 
+    MPI_Send(sendbuf, count, datatype, root, 0, comm);
+
     if (rank == root) {
         int typesize;
         MPI_Type_size(datatype, &typesize);
@@ -142,8 +144,6 @@ int G_Reduce(const void *sendbuf, void *recvbuf, int count,
                 *((int*)recvbuf) += *((int*)tempbuf);
             }
         }
-    } else {
-        MPI_Send(sendbuf, count, datatype, root, 0, comm);
     }
 
     MPI_Barrier(comm);
@@ -162,9 +162,9 @@ int G_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
         for (auto i = 0; i < size; ++i) {
             MPI_Send((char*)sendbuf +  i * sendcount * typesize, sendcount, sendtype, i, 0, comm);
         }
-    } else {
-        MPI_Recv(recvbuf, recvcount, recvtype, root, 0, comm, nullptr);
     }
+
+    MPI_Recv(recvbuf, recvcount, recvtype, root, 0, comm, nullptr);
 
     MPI_Barrier(comm);
     return 0;
@@ -175,6 +175,8 @@ int G_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
              MPI_Comm comm) {
     MPI_Barrier(comm);
 
+    MPI_Send(sendbuf, sendcount, sendtype, root, 0, comm);
+
     if (rank == root) {
         int typesize;
         MPI_Type_size(sendtype, &typesize);
@@ -182,8 +184,6 @@ int G_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
         for (auto i = 0; i < size; ++i) {
             MPI_Recv((char*)sendbuf +  i * sendcount * typesize, recvcount, recvtype, i, 0, comm, nullptr);
         }
-    } else {
-        MPI_Send(sendbuf, sendcount, sendtype, root, 0, comm);
     }
 
     MPI_Barrier(comm);
