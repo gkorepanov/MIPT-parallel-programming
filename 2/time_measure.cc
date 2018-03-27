@@ -141,7 +141,7 @@ int G_Reduce(const void *sendbuf, void *recvbuf, int count,
         for (auto i = 0; i < size; ++i) {
             MPI_Recv(tempbuf, count, datatype, i, 0, comm, nullptr);
             for (auto j = 0; j < count; ++j) {
-                *((int*)recvbuf) += *((int*)tempbuf);
+                *((int*)recvbuf + j)  += *((int*)tempbuf + j);
             }
         }
     }
