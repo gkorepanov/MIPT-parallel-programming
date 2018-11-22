@@ -15,21 +15,16 @@
 
 using namespace std;
 
-#define ISTEP 1
-
-// parallel equivalient of a[i][j] = f( a[i+3][j-2] );
 // parallel equivalient of a[i][j] = f( a[i-1][j] + a[i][j-1] + a[i][j+1] + a[i+1][j] );
 void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
-    assert(ISTEP > 0);
     double *a = (double*) _a;
 
     // _PT == PER THREAD
-    size_t processed_lines_PT = ISIZE / nthreads;
-    size_t total_lines_PT = processed_lines_PT + ISTEP;
+    size_t processed_lines_PT = (ISIZE - 2) / nthreads;
+    size_t total_lines_PT = processed_lines_PT + 2;
 
     size_t processed_elements_PT = processed_lines_PT * JSIZE;
     size_t total_elements_PT     = total_lines_PT     * JSIZE;
-
 
     vector<double> buf(total_elements_PT + (nthreads - 1));
 
@@ -44,15 +39,17 @@ void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
     // truncate last to prevent overflow
     send_counts.back() = SIZE - send_starts.back();
 
-
     // #############################################################
     // #                         GATHER                            #
     // #############################################################
-    auto& receive_starts = send_starts;
+
+    auto receive_starts = send_starts;
+    for (size_t i = 0; i < nthreads; ++i)
+        receive_starts[i] += JSIZE;
 
     vector<int> receive_counts(nthreads, processed_elements_PT);
     // truncate last to prevent overflow
-    receive_counts.back() = SIZE - receive_starts.back();
+    receive_counts.back() = (SIZE - JSIZE) - receive_starts.back();
 
     int calculate = true;
     double residual_pt, residual;
@@ -69,8 +66,8 @@ void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
                      MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 
-        for (size_t i = ((id == 0) ? 1 : 0); i < send_counts[id] / JSIZE - ISTEP; ++i)
-            for (size_t j = 1; j < N-1; ++j) {
+        for (size_t i = 1; i < receive_counts[id] / JSIZE; ++i)
+            for (size_t j = 1; j < N - 1; ++j) {
                 auto prev = buf[i*JSIZE + j];
 
                 buf[i*JSIZE + j] = (buf[ (i-1)*JSIZE + ( j ) ] + buf[ ( i )*JSIZE + (j-1) ] + \
@@ -80,7 +77,7 @@ void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
             }
 
         
-        MPI_Gatherv(buf.data(), receive_counts[id], MPI_DOUBLE,
+        MPI_Gatherv(buf.data() + JSIZE, receive_counts[id], MPI_DOUBLE,
                     a, receive_counts.data(), receive_starts.data(), MPI_DOUBLE,
                     0, MPI_COMM_WORLD);
 
