@@ -3,8 +3,10 @@
 #include <math.h>
 #include <mpi.h>
 #include <iostream>
-#include <vector>
 #include <iomanip>
+#include <vector>
+#include <cassert>
+#include <algorithm>
 
 #define ISIZE 1000
 #define JSIZE 1000
@@ -16,44 +18,76 @@ double f(double x) {
     return sin(0.00001 * x);
 }
 
+#define ISTEP 0
+#define JSTEP 0
+
+// parallel equivalient of a[i][j] = f( a[i][j] );
 void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
-    double* a = (double*) _a;
+    assert(ISTEP >= 0);
+    assert(JSTEP <= 0);
+    double *a = (double*) _a;
 
-    size_t buf_size = ISIZE * JSIZE / nthreads;
-    vector<double> buf(buf_size);
+    // _PT == PER THREAD
+    size_t processed_lines_PT = ISIZE / nthreads;
+    size_t total_lines_PT = processed_lines_PT + ISTEP;
 
-    MPI_Scatter(a, buf_size, MPI_DOUBLE,
-                buf.data(), buf_size, MPI_DOUBLE,
+    size_t processed_elements_PT = processed_lines_PT * JSIZE;
+    size_t total_elements_PT     = total_lines_PT     * JSIZE;
+
+
+    // #############################################################
+    // #                         SCATTER                           #
+    // #############################################################
+    vector<int> send_starts(nthreads);
+    for (size_t i = 0; i < nthreads; ++i)
+        send_starts[i] = processed_elements_PT * i;
+
+    vector<int> send_counts(nthreads, total_elements_PT);
+    // truncate last to prevent overflow
+    send_counts.back() = SIZE - send_starts.back();
+
+    vector<double> buf(total_elements_PT + (nthreads - 1));
+
+    MPI_Scatterv(a, send_counts.data(), send_starts.data(), MPI_DOUBLE,
+                 buf.data(), send_counts[id],
+                 MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+
+    // #############################################################
+    // #                         PROCESS                           #
+    // #############################################################
+    for (size_t i = 0; i < send_counts[id] / JSIZE - ISTEP; ++i)
+        for (size_t j = max(0, -JSTEP); j < min(JSIZE, JSIZE - JSTEP); ++j)
+            buf[i*JSIZE + j] = f( buf[ (i+ISTEP)*JSIZE + (j+JSTEP) ] );
+
+
+    // #############################################################
+    // #                         GATHER                            #
+    // #############################################################
+    auto& receive_starts = send_starts;
+
+    vector<int> receive_counts(nthreads, processed_elements_PT);
+    // truncate last to prevent overflow
+    receive_counts.back() = SIZE - receive_starts.back();
+    
+    MPI_Gatherv(buf.data(), receive_counts[id], MPI_DOUBLE,
+                a, receive_counts.data(), receive_starts.data(), MPI_DOUBLE,
                 0, MPI_COMM_WORLD);
-
-    for (size_t i = 0; i < buf_size; ++i)
-        buf[i] = f(buf[i]);
-
-    MPI_Gather(buf.data(), buf_size, MPI_DOUBLE,
-               a, buf_size, MPI_DOUBLE,
-               0, MPI_COMM_WORLD);
-
-    if (id == 0) {
-        auto start = SIZE - (SIZE % nthreads);
-
-        for (auto i = start; i < SIZE; ++i)
-            a[i] = f(a[i]);
-    }
 }
 
 
 void output(double a[ISIZE][JSIZE]) {
-    FILE *ff;
-    ff = fopen("result.txt", "w");
-
-    for(int i = 0; i < ISIZE; i++) {
-        for (int j = 0; j < JSIZE; j++)
-            fprintf(ff, "%f ", a[i][j]);
-
-        fprintf(ff,"\n");
-    }
-
-    fclose(ff);
+ //    FILE *ff;
+ //    ff = fopen("result.txt", "w");
+ //
+ //    for(int i = 0; i < ISIZE; i++) {
+ //        for (int j = 0; j < JSIZE; j++)
+ //            fprintf(ff, "%f ", a[i][j]);
+ //
+ //        fprintf(ff,"\n");
+ //    }
+ //
+ //    fclose(ff);
 }
 
 

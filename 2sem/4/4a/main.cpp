@@ -8,8 +8,8 @@
 #include <cassert>
 #include <algorithm>
 
-#define ISIZE 1000
-#define JSIZE 1000
+#define ISIZE 10000
+#define JSIZE 10000
 #define SIZE ISIZE * JSIZE
 
 using namespace std;
@@ -46,7 +46,7 @@ void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
     // truncate last to prevent overflow
     send_counts.back() = SIZE - send_starts.back();
 
-    vector<double> buf(total_elements_PT);
+    vector<double> buf(total_elements_PT + (nthreads - 1));
 
     MPI_Scatterv(a, send_counts.data(), send_starts.data(), MPI_DOUBLE,
                  buf.data(), send_counts[id],
@@ -77,17 +77,17 @@ void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
 
 
 void output(double a[ISIZE][JSIZE]) {
-    FILE *ff;
-    ff = fopen("result.txt", "w");
-
-    for(int i = 0; i < ISIZE; i++) {
-        for (int j = 0; j < JSIZE; j++)
-            fprintf(ff, "%f ", a[i][j]);
-
-        fprintf(ff,"\n");
-    }
-
-    fclose(ff);
+ //    FILE *ff;
+ //    ff = fopen("result.txt", "w");
+ //
+ //    for(int i = 0; i < ISIZE; i++) {
+ //        for (int j = 0; j < JSIZE; j++)
+ //            fprintf(ff, "%f ", a[i][j]);
+ //
+ //        fprintf(ff,"\n");
+ //    }
+ //
+ //    fclose(ff);
 }
 
 

@@ -3,8 +3,8 @@
 #include <math.h>
 #include <mpi.h>
 #include <iostream>
-#include <vector>
 #include <iomanip>
+#include <vector>
 
 #define ISIZE 1000
 #define JSIZE 1000
@@ -17,9 +17,9 @@ double f(double x) {
 }
 
 void calculate(double a[ISIZE][JSIZE], int id, int nthreads) {
-    for (size_t i = 0; i < ISIZE; ++i)
+    for (size_t i=0; i < ISIZE; ++i)
         for (size_t j = 0; j < JSIZE; ++j)
-            a[i][j] = f(a[i][j]);
+            a[i][j] = f( a[i][j] );
 }
 
 
@@ -71,4 +71,3 @@ int main(int argc, char **argv) {
 
     MPI_Finalize();
 }
-
