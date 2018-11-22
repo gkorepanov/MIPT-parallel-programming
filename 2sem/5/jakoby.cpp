@@ -66,7 +66,7 @@ void calculate(double _a[ISIZE][JSIZE], int id, int nthreads) {
                      MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 
-        for (size_t i = 1; i < receive_counts[id] / JSIZE; ++i)
+        for (size_t i = 1; i < receive_counts[id] / JSIZE + 1; ++i)
             for (size_t j = 1; j < N - 1; ++j) {
                 auto prev = buf[i*JSIZE + j];
 
